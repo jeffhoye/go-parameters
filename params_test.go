@@ -1,6 +1,7 @@
 package parameters
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"testing"
@@ -17,7 +18,7 @@ func TestParseJSONBody(t *testing.T) {
 	}
 	r.Header.Set("Content-Type", "application/json")
 
-	ParseParams(r)
+	r = r.WithContext(context.WithValue(r.Context(), paramsKey, ParseParams(r)))
 
 	params := GetParams(r)
 
@@ -38,7 +39,7 @@ func TestParseJSONBodyContentType(t *testing.T) {
 	}
 	r.Header.Set("Content-Type", "application/json; charset=utf8")
 
-	ParseParams(r)
+	r = r.WithContext(context.WithValue(r.Context(), paramsKey, ParseParams(r)))
 
 	params := GetParams(r)
 
@@ -59,7 +60,7 @@ func TestParseNestedJSONBody(t *testing.T) {
 	}
 	r.Header.Set("Content-Type", "application/json")
 
-	ParseParams(r)
+	r = r.WithContext(context.WithValue(r.Context(), paramsKey, ParseParams(r)))
 
 	params := GetParams(r)
 
@@ -118,7 +119,7 @@ func TestParseGET(t *testing.T) {
 		t.Fatal("Could not build request", err)
 	}
 
-	ParseParams(r)
+	r = r.WithContext(context.WithValue(r.Context(), paramsKey, ParseParams(r)))
 
 	params := GetParams(r)
 
@@ -139,7 +140,7 @@ func TestParsePOST(t *testing.T) {
 	}
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	ParseParams(r)
+	r = r.WithContext(context.WithValue(r.Context(), paramsKey, ParseParams(r)))
 
 	params := GetParams(r)
 
@@ -160,7 +161,7 @@ func TestParsePUT(t *testing.T) {
 	}
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	ParseParams(r)
+	r = r.WithContext(context.WithValue(r.Context(), paramsKey, ParseParams(r)))
 
 	params := GetParams(r)
 
@@ -181,7 +182,7 @@ func TestParsePostUrlJSON(t *testing.T) {
 	}
 	r.Header.Set("Content-Type", "application/json")
 
-	ParseParams(r)
+	r = r.WithContext(context.WithValue(r.Context(), paramsKey, ParseParams(r)))
 
 	params := GetParams(r)
 
@@ -212,6 +213,25 @@ func TestParseJSONBodyMux(t *testing.T) {
 	m := mux.NewRouter()
 	m.KeepContext = true
 	m.HandleFunc("/test/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
+		r = r.WithContext(context.WithValue(r.Context(), paramsKey, ParseParams(r)))
+
+		params := GetParams(r)
+
+		val, present := params.Get("test")
+		if !present {
+			t.Fatal("Key: 'test' not found")
+		}
+		if val != true {
+			t.Fatal("Value of 'test' should be 'true', got: ", val)
+		}
+
+		val, present = params.Get("id")
+		if !present {
+			t.Fatal("Key: 'id' not found")
+		}
+		if val != uint64(42) {
+			t.Fatal("Value of 'id' should be 42, got: ", val)
+		}
 	})
 
 	var match mux.RouteMatch
@@ -219,26 +239,6 @@ func TestParseJSONBodyMux(t *testing.T) {
 		t.Error("Mux did not match")
 	}
 	m.ServeHTTP(nil, r)
-
-	ParseParams(r)
-
-	params := GetParams(r)
-
-	val, present := params.Get("test")
-	if !present {
-		t.Fatal("Key: 'test' not found")
-	}
-	if val != true {
-		t.Fatal("Value of 'test' should be 'true', got: ", val)
-	}
-
-	val, present = params.Get("id")
-	if !present {
-		t.Fatal("Key: 'id' not found")
-	}
-	if val != uint64(42) {
-		t.Fatal("Value of 'id' should be 42, got: ", val)
-	}
 }
 
 func TestImbue(t *testing.T) {
@@ -249,7 +249,7 @@ func TestImbue(t *testing.T) {
 	}
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	ParseParams(r)
+	r = r.WithContext(context.WithValue(r.Context(), paramsKey, ParseParams(r)))
 
 	params := GetParams(r)
 
@@ -288,7 +288,7 @@ func TestImbueTime(t *testing.T) {
 	}
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	ParseParams(r)
+	r = r.WithContext(context.WithValue(r.Context(), paramsKey, ParseParams(r)))
 
 	params := GetParams(r)
 
@@ -322,7 +322,7 @@ func TestHasAll(t *testing.T) {
 	}
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	ParseParams(r)
+	r = r.WithContext(context.WithValue(r.Context(), paramsKey, ParseParams(r)))
 
 	params := GetParams(r)
 	//Test All
@@ -348,7 +348,7 @@ func TestHasAll(t *testing.T) {
 	}
 }
 
-// Test some garbage input, ids= "" (empty string) 
+// Test some garbage input, ids= "" (empty string)
 // Should either be not ok, or empty slice
 func TestParseEmpty(t *testing.T) {
 	body := "{\"test\":true}"
@@ -358,16 +358,16 @@ func TestParseEmpty(t *testing.T) {
 	}
 	r.Header.Set("Content-Type", "application/json")
 
-	ParseParams(r)
+	r = r.WithContext(context.WithValue(r.Context(), paramsKey, ParseParams(r)))
 
 	params := GetParams(r)
 
 	t.Log(params)
 	ids, ok := params.GetUint64SliceOk("ids")
 	if ok {
-		t.Log("ids",ids)
+		t.Log("ids", ids)
 		if len(ids) > 0 {
-			t.Fatal("ids should be !ok or an empty array. Length:",len(ids))
+			t.Fatal("ids should be !ok or an empty array. Length:", len(ids))
 		}
 	}
-}	
+}
